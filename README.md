@@ -10,11 +10,14 @@ The program has the requirement that there is a "key" datafield in the tab becau
 
 The data returned is data on each section of the songs scraped. For all valid songs with valid tabs, the following data is returned:
 
-- the progression in roman numerials(scale degrees) when the song is standardized to the key of C. This is to show how the progressions of the songs are different. 
-- Total number of unique chords in the song
-- Total number of non-diatonic chords
-- Total number of extended chords
-- 
+- Name: Song's name
+- Artist: Artist name
+- Section: Section of the song
+- Progression: the chord progression of the section roman numerials(scale degrees) when the song is standardized to the key of C. This is to show how the progressions between songs are different. 
+- EndDifferent: None if the end of the section's progression was not different than how it was for the entirty of the section. If it is, the part different from the pattern will be shown. 
+- NumSectionChords: Total number of unique chords in the section
+- nonDiatonicChords: Total number of non-diatonic chords in the section
+- extendedChords: Total number of extended chords in the section
 
 Disclaimer: There are so many ways in which people express data in the tabs, that some songs have complications getting parsed when they should be able to. Also the program only looks for the site's key data, so many songs will be unparsable because this tag is not present. ** However: Searching for more modern songs with guitar or piano instrumentation will likely increase the chance of a successful parse of the data. ** 
 Finally, one issue experienced with this is that the site seems to have changed its previously set html tags which the program depends on staying consistent. If they continue to do this, this will require program maintenance. 
