@@ -1,0 +1,7 @@
+,Name,Artist,Section,Progression,EndDifferent,NumSectionChords,nonDiatonicChords,extendedChords
+0,Perfect,Ed Sheeran,Intro,I,,1,0,0
+1,Perfect,Ed Sheeran,Verse ,I-vi-IV-V,,4,0,0
+2,Perfect,Ed Sheeran,Pre-Chorus,I-vi-IV-I-V-I-vi-IV-V,,4,0,0
+3,Perfect,Ed Sheeran,Chorus,vi-IV-I-V,V-IV-V,5,0,0
+4,Perfect,Ed Sheeran,Interlude,I-vi-IV-V,,4,0,0
+5,Perfect,Ed Sheeran,Outro,I-IV-V,,4,0,2

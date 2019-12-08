@@ -6,6 +6,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+import re
 import glob
 import time
 
@@ -189,20 +190,15 @@ def scrapeUltimateGuitar(wd, song, artist):
     valid = False
     header = True
     data = None
-    print("AT LEAST HERE")
    #for listing in curSoup.find_all('div', attrs = {'class': '_2vnXR'}):
     for listing in curSoup.find_all('div', attrs = {'class': 'pZcWD'}):
         if header:
             header = False
             continue
-        print(listing)
         #for form in listing.find_all('div', attrs = {'class':"s2__B _3grw4"}):
         for form in listing.find_all('div', attrs = {'class':"_3g0_K _1_CWK"}):
             tabType = form.get_text()
-            print(tabType)
-            print("_______________________")
         if tabType.lower() == "chords":
-            print("WELL WE ARE HERE")
             valid = True
             link = listing.find('a', href = True)['href']
             wd.get(link)
@@ -226,11 +222,9 @@ def chordScraper(wd):
     key = ""
     capo = 0
     for headerLine in soup.find_all('div', attrs ={'class':'_2EcLF'}):
-
         if headerLine.get_text()[0:5] == "Capo:":
             capo = int(headerLine.get_text()[6])
         if headerLine.get_text()[0:4] =="Key:":
-
             key = headerLine.get_text()[5:].strip()
             break
     if key == "":
@@ -240,13 +234,15 @@ def chordScraper(wd):
     
     #standardize the key
     transposeToC(wd, key, capo)
-    print("NOW WE SHOULD BE IN C MAJOR")
+    #Now should be in C major
+
     body = BeautifulSoup(wd.page_source, 'html.parser').find('pre', attrs ={'class':'_3zygO'})
+
     #Try to split into different sections
     secs = ["Intro", "Hook","Verse","Chorus","Pre-Chorus","Post-Chorus", "Bridge", "Interlude","Solo","Outro"]
     regex = "\[(.*?)\]"
     sections = re.split(regex,str(body))
-    print(sections)
+
     data = {} #Data will be held in a dictionary with the key being the section, and the value being a list of the progression, the end (this one will be None if the end is the same as the whole thing), number of chords in the section, number of nondiatonic chords and number of extended chords 
     secDataNext=False
     secLabel = ""
@@ -263,17 +259,18 @@ def chordScraper(wd):
         else:
             miniSoup = BeautifulSoup(sec, 'html.parser')
             secChords= []
-            if len(miniSoup.find_all('span', attrs ={'class':'B24oE _1r_2U'})) == 0:
+            if len(miniSoup.find_all('span', attrs ={'class':'_3bHP1 _3ffP6'})) == 0:
                 #This means we are looking at a section of the tab that is not a section label, and does not have any chords
                 print('there is nothing useful in this section')
                 continue
-            for item in miniSoup.find_all('span', attrs ={'class':'B24oE _1r_2U'}):
+            for item in miniSoup.find_all('span', attrs ={'class':'_3bHP1 _3ffP6'}):
                 chord = item.get_text()
+            
                 try:
-                    secChords.append(chord)
+                    secChords.append(chord.strip())
                 except:
                     pass
-                
+
             progression = []
             chords = []
             for c in range(len(secChords)):
@@ -352,7 +349,6 @@ def chordScraper(wd):
             if secLabel in list(data.keys()) and data[secLabel] == []:
                 print("EMPTY SECTION")
                 del data[secLabel]
-    print(data)
     return data
 
 
@@ -375,11 +371,9 @@ def scrapeSongChords(inputArtists):#Returns the data on each section of each son
                 done.append((row["Name"], row['Artists']))
                 continue
             else:
-                print("HEY")
                 df = dictToDF(data,row["Name"], row['Artists'])
                 done.append((row["Name"], row['Artists']))
                 cur = row["Name"] + "-" + row['Artists']
-                print(df)
                 df.to_csv("data/songData/{0}.csv".format(cur), encoding='utf-8')
     files = [file for file in glob.glob('data/songData/*.csv')]
     try:
