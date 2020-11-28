@@ -10,126 +10,13 @@ import re
 import glob
 import time
 
-def transposeToC(driver, key, capo):
-    majKeys = ['A', "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
-    transposes = driver.find_elements_by_tag_name("button")
-    for t in transposes:
-        if t.text== "−1":
-            transposeDown= t
-        elif t.text == "+1":
-            transposeUp = t
-   
-    #Check flats
-    if "b" in key:
-        flatKeys = ['A', "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"]
-        index = flatKeys.index(key[:2])
-        newKey = majKeys[index]
-        if "m" in key or "M" in key:
-            key = newKey + 'm'
-        else:
-            key = newKey
-            
-    #if key is minor, make it its relative major
-    if "m" in key or "M" in key:
-        oldKey = key.replace('m', "")
-        index = majKeys.index(oldKey)
-        index = (index + 3)%12
-        key = majKeys[index]
-    #Now in a major key
-    
-    if key == 'C':
-        return driver
-    #account for the capo if it is present, without transposing
-    elif capo != 0:
-        index = (majKeys.index(key) - capo)
-        if index < 0: 
-            key = majKeys[12 + index]
-        else:
-            key = majKeys[index]
-    if key == 'C':
-        return driver
-    elif key in ["F#", "G", "G#", 'A', "A#", "B"]:
-        while key != "C":
-            index = (majKeys.index(key) + 1)%12
-            time.sleep(6)
-            transposeUp.click()
-            key = majKeys[index]
-    elif key in ["C#", "D", "D#", "E", "F"]:
-        while key != "C":
-            index = (majKeys.index(key) - 1)
-            time.sleep(6)
-            transposeDown.click()
-            key = majKeys[index]
-    time.sleep(5)
-    return driver
-        
-    
-    
-def diatonicPattern(chords):
-    cMaj = ["C", "Dm", "Em", "F", "G", "Am", "Bdim"]
-    numerals = ["I", "ii", "iii", "IV", "V", "vi", "VII"]
-    noExtend=[]
-    nonDiatonic = 0
-    
-    for val in chords:
-        if '/' in val:
-            if 'm/' in val:
-                val = val[0:2]
-            else:
-                val = val[0]
-        noExtend.append(''.join([i for i in val if not i.isdigit()]).replace("maj", "").replace("sus", "").replace('dim', "").replace('aug', "").replace('(', "").replace(')', "").replace('add',""))
-
-    numbers = ""
-    last = ""
-    prog = []
-    for number in noExtend:
-        if number != last:
-            prog.append(number)
-        last = number
-    for c in prog:
-        try:
-            numbers = numbers + "-" + numerals[cMaj.index(c)]
-        except:
-            cMajStripped = ["C", "D", "E", "F", "G", "A", "B"]
-            nonDiatonic += 1
-            suffix = ""
-            if "#" in c:
-                c = c.replace("#", "")
-                suffix += "#"
-            elif "b" in c:
-                c = c.replace('b', "")
-                suffix += "b"
-            if 'dim' in c:
-                c = c.replace('dim', "")
-                suffix += ' dim'
-            elif 'aug' in c:
-                c = c.replace('aug', "")
-                suffix += "aug"
-            if 'm' in c:
-                minor = True
-                c = c.replace("m", "")
-            elif "M" in c:
-                minor = True
-                c = c.replace("M", "")
-            else:
-                minor = False
-            #need to handle a major where there should not be one or minor where there should not be one
-            if minor: 
-                numbers = numbers + "-"+ numerals[cMajStripped.index(c)].lower()+suffix
-            else:
-                numbers = numbers + "-"+ numerals[cMajStripped.index(c)].upper()+suffix
-    return numbers[1:], nonDiatonic
-
-#Function to turn dictionary key value pairs into dataframe rows
-def dictToDF(data, song, artist):
-    df = pd.DataFrame(columns = ['Name', "Artist", "Section", "Progression", "EndDifferent", "NumSectionChords", "nonDiatonicChords", "extendedChords"])
-    for key, value in data.items():
-        if value == []:
-            continue
-        df = df.append({'Name':song, "Artist":artist, "Section":key, "Progression":value[0], "EndDifferent":value[1], "NumSectionChords":value[2], "nonDiatonicChords":value[3], "extendedChords":value[4]}, ignore_index = True)
-    return df
-
-
+"""
+Parent function to scrape the chord progression of a single song from ultimate-guitar.com
+    Parameters: 
+     -wd = webdriver executable file (can use included chromedriver)
+     - song: the name of the song you want to scrape
+     - artist: name of the artist who the song is by
+"""
 def scrapeUltimateGuitar(wd, song, artist):
     url = 'https://www.ultimate-guitar.com/'
     wd.get(url)
@@ -213,7 +100,8 @@ def scrapeUltimateGuitar(wd, song, artist):
         print("It does not seem that there is a chord tab for the song " + song + " by " + artist + " on UltimateGuitarTab.com")
         return None
     
-    
+#Function to be run when you are on the webpage you want to scrape
+# Will scrape the chord data of the song transposed to the key of C major
 def chordScraper(wd):
     html = wd.page_source
     soup = BeautifulSoup(html, 'html.parser')
@@ -232,18 +120,22 @@ def chordScraper(wd):
         print("NOT A VALID TAB")
         return None
     
-    #standardize the key
+    #standardize the key to C major
     transposeToC(wd, key, capo)
     #Now should be in C major
 
     body = BeautifulSoup(wd.page_source, 'html.parser').find('pre', attrs ={'class':'_3zygO'})
 
-    #Try to split into different sections
+    #Try to split into different song sections
     secs = ["Intro", "Hook","Verse","Chorus","Pre-Chorus","Post-Chorus", "Bridge", "Interlude","Solo","Outro"]
     regex = "\[(.*?)\]"
     sections = re.split(regex,str(body))
 
-    data = {} #Data will be held in a dictionary with the key being the section, and the value being a list of the progression, the end (this one will be None if the end is the same as the whole thing), number of chords in the section, number of nondiatonic chords and number of extended chords 
+
+    #Data will be held in a dictionary with the key being the section, and the value being a list of the progression,
+    #   the end (this one will be None if the end is the same as the whole thing), number of chords in the section, 
+    #   number of nondiatonic chords and number of extended chords 
+    data = {} 
     secDataNext=False
     secLabel = ""
     #Try to define sections
@@ -277,7 +169,7 @@ def chordScraper(wd):
                 progression.append(secChords[c])
                 if c == len(secChords)-1 and chords == []:
                     chords = secChords
-                #check if this is the point of circular nature in the progression
+                #check if this is the point of circular nature in the chord progression
                 elif len(progression) > 1 and progression[-1] == progression[0]:
                     progLen = len(progression) -1 
                     qualify = True
@@ -352,8 +244,9 @@ def chordScraper(wd):
     return data
 
 
-
-def scrapeSongChords(inputArtists):#Returns the data on each section of each song in the scrapeSongs.csv file by any of the input artists
+#Returns the data on each section of each song in the scrapeSongs.csv file. 
+# Will only get the data of artists in 'inputArtists'
+def scrapeSongChords(inputArtists):
     option = webdriver.ChromeOptions()
     option.add_argument('--incognito')
     wd = webdriver.Chrome('dependencies/chromedriver', options = option)
@@ -374,6 +267,7 @@ def scrapeSongChords(inputArtists):#Returns the data on each section of each son
                 df = dictToDF(data,row["Name"], row['Artists'])
                 done.append((row["Name"], row['Artists']))
                 cur = row["Name"] + "-" + row['Artists']
+                #Save the file of the song's data
                 df.to_csv("data/songData/{0}.csv".format(cur), encoding='utf-8')
     files = [file for file in glob.glob('data/songData/*.csv')]
     try:
@@ -383,8 +277,135 @@ def scrapeSongChords(inputArtists):#Returns the data on each section of each son
         print("No valid tabs were found and there were no songs already saved, try searching for different songs!")
 
 
+#Function to transpose the current chord sheet to the Key of C major
+def transposeToC(driver, key, capo):
+    majKeys = ['A', "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
+    transposes = driver.find_elements_by_tag_name("button")
+    for t in transposes:
+        if t.text== "−1":
+            transposeDown= t
+        elif t.text == "+1":
+            transposeUp = t
+   
+    #Check for if the key is flat, and then turn it to its corresponding sharp key
+    if "b" in key:
+        flatKeys = ['A', "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"]
+        index = flatKeys.index(key[:2])
+        newKey = majKeys[index]
+        if "m" in key or "M" in key:
+            key = newKey + 'm'
+        else:
+            key = newKey
+            
+    #if key is minor, make it its relative major key by transposing up 3 half steps
+    if "m" in key or "M" in key:
+        oldKey = key.replace('m', "")
+        index = majKeys.index(oldKey)
+        index = (index + 3)%12
+        key = majKeys[index]
+    #Now the chords should be in a major key
+    
+    #If the major key is C, then quit
+    if key == 'C':
+        return driver
+
+    #Account for the capo if it is present, then transpose to C from the resulting key
+    elif capo != 0:
+        index = (majKeys.index(key) - capo)
+        if index < 0: 
+            key = majKeys[12 + index]
+        else:
+            key = majKeys[index]
+    if key == 'C':
+        return driver
+    elif key in ["F#", "G", "G#", 'A', "A#", "B"]:
+        while key != "C":
+            index = (majKeys.index(key) + 1)%12
+            time.sleep(6)
+            transposeUp.click()
+            key = majKeys[index]
+    elif key in ["C#", "D", "D#", "E", "F"]:
+        while key != "C":
+            index = (majKeys.index(key) - 1)
+            time.sleep(6)
+            transposeDown.click()
+            key = majKeys[index]
+    time.sleep(5)
+    return driver
+        
+    
+#Lists out the detected chord progression of the section 
+def diatonicPattern(chords):
+    cMaj = ["C", "Dm", "Em", "F", "G", "Am", "Bdim"]
+    numerals = ["I", "ii", "iii", "IV", "V", "vi", "VII"]
+    noExtend=[]
+    nonDiatonic = 0
+    
+    for val in chords:
+        if '/' in val:
+            if 'm/' in val:
+                val = val[0:2]
+            else:
+                val = val[0]
+        noExtend.append(''.join([i for i in val if not i.isdigit()]).replace("maj", "").replace("sus", "").replace('dim', "").replace('aug', "").replace('(', "").replace(')', "").replace('add',""))
+
+    numbers = ""
+    last = ""
+    prog = []
+    for number in noExtend:
+        if number != last:
+            prog.append(number)
+        last = number
+    for c in prog:
+        #Attempts to just get the numeral associated with a chord in the key of C major
+        # If the current chord is not in cMaj, add the correct suffix
+        try:
+            numbers = numbers + "-" + numerals[cMaj.index(c)]
+        except:
+            cMajStripped = ["C", "D", "E", "F", "G", "A", "B"]
+            nonDiatonic += 1
+            suffix = ""
+            if "#" in c:
+                c = c.replace("#", "")
+                suffix += "#"
+            elif "b" in c:
+                c = c.replace('b', "")
+                suffix += "b"
+            if 'dim' in c:
+                c = c.replace('dim', "")
+                suffix += ' dim'
+            elif 'aug' in c:
+                c = c.replace('aug', "")
+                suffix += "aug"
+            if 'm' in c:
+                minor = True
+                c = c.replace("m", "")
+            elif "M" in c:
+                minor = True
+                c = c.replace("M", "")
+            else:
+                minor = False
+            #need to handle a major where there should not be one or minor where there should not be one
+            if minor: 
+                numbers = numbers + "-"+ numerals[cMajStripped.index(c)].lower()+suffix
+            else:
+                numbers = numbers + "-"+ numerals[cMajStripped.index(c)].upper()+suffix
+    return numbers[1:], nonDiatonic
+
+#Function to turn dictionary key value pairs into dataframe rows
+def dictToDF(data, song, artist):
+    df = pd.DataFrame(columns = ['Name', "Artist", "Section", "Progression", "EndDifferent", "NumSectionChords", "nonDiatonicChords", "extendedChords"])
+    for key, value in data.items():
+        if value == []:
+            continue
+        df = df.append({'Name':song, "Artist":artist, "Section":key, "Progression":value[0], "EndDifferent":value[1], "NumSectionChords":value[2], "nonDiatonicChords":value[3], "extendedChords":value[4]}, ignore_index = True)
+    return df
+
+
 def main():
-    inputArtists =["Ed Sheeran"]
+    #inputArtists is the list of artists who show up in the the Artists column 
+    # of 'scrapeSongs.csv' AND we want to actually scrape the songs of
+    inputArtists =["Ed Sheeran"] #all listed artists must be in scrapeSongs.csv
     scrapeSongChords(inputArtists)
 
 if __name__ == "__main__":
