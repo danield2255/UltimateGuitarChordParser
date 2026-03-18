@@ -9,112 +9,167 @@ from selenium.webdriver.common.keys import Keys
 import re
 import glob
 import time
+from seleniumbase import SB
 
-"""
-Parent function to scrape the chord progression of a single song from ultimate-guitar.com
-    Parameters: 
-     -wd = webdriver executable file (can use included chromedriver)
-     - song: the name of the song you want to scrape
-     - artist: name of the artist who the song is by
-"""
+def verify_success(sb):
+    sb.assert_element('img[alt="Logo Assembly"]', timeout=4)
+    sb.sleep(4)
+
 def scrapeUltimateGuitar(wd, song, artist):
-    url = 'https://www.ultimate-guitar.com/'
-    wd.get(url)
-    time.sleep(2)
+    """
+    Parent function to scrape the chord progression of a single song from ultimate-guitar.com
+        Parameters: 
+        - wd = webdriver executable file (can use included chromedriver)
+        - song: the name of the song you want to scrape
+        - artist: name of the artist who the song is by
+    """
+    search_string = str(song + " " + artist).replace(" ", "+")
+    search_url = f"https://www.ultimate-guitar.com/search.php?title={search_string}&type%5B0%5D=300&page=1&order=myweight"
+    # wd.uc_open_with_reconnect("https://www.ultimate-guitar.com/", 3)
+    wd.uc_open_with_reconnect(search_url, 3)
+    time.sleep(4)
     #Search for the song name 
-    searchBarPath = '/html/body/div[1]/div/div/div[2]/div/div/div/p[2]/form/div[2]/input'
-    searchBar =  wd.find_element_by_tag_name("input")
-    searchBar.send_keys(artist+ " "+song)
-    searchBar.send_keys(Keys.ENTER)
-    time.sleep(2)
+    search_val = str(artist + " " + song)
+    # wd.click('input[type="search"]')
+    # time.sleep(2)
+    # wd.type('input[type="search"]', search_val)
+    # time.sleep(4)
+    # wd.uc_click('button:contains("Search")')
+    
+    # time.sleep(4)
+    print("Searching for " + song + " by " + artist)
+    # try:
+    #     verify_success(wd)
+    #     print("Successfully verified")
+    # except Exception:
+    #     if wd.is_element_visible('input[value*="Verify"]'):
+    #         wd.uc_click('input[value*="Verify"]')
+    #     else:
+    #         wd.uc_gui_click_captcha()
+    #     try:
+    #         verify_success(wd)
+    #         print("Successfully verified")
+    #     except Exception:
+    #         raise Exception("Detected!")
     #Search Chords only 
-    try:
-        chordsPath = "/html/body/div[1]/div/div/div[2]/main/div[2]/div[3]/section/nav/div[1]/nav/a[2]"
-        chords = wd.find_element_by_xpath(chordsPath)
-        chords.click()
-        time.sleep(2)
-    except:
-        try:
-            button  = wd.find_element_by_xpath("/html/body/div[1]/div/a[2]")
-            button.click()
-            time.sleep
-        except:
-            print("need to wait")
-            try:
-                time.sleep(20)
-                chords = wd.find_element_by_xpath(chordsPath)
-                chords.click()
-            except:
-                print("There was no chords button")
+    # try:
+    #     wd.click('a:contains("Chords")')
+    #     time.sleep(4)
+    # except:
+    #     #Try Xpath if the above does not work, as sometimes the button is in a different place
+    #     try:
+    #         wd.click('/html/body/div/div[2]/main/div/div[2]/section/nav/div[1]/nav/a[1]')
+    #         time.sleep(4)
+    #     except:
+    #         print("need to wait")
+    #         try:
+    #             time.sleep(20)
+    #             wd.click('a:contains("Chords")')
+    #             time.sleep(4)
+    #         except:
+    #             print("There was no chords button")
     
     #Pick the top rated listing
-    time.sleep(2)
-    try:
-        bestPath = "/html/body/div[1]/div/div/div[2]/main/div[2]/div[3]/section/nav/div[2]/nav/a[2]"
-        highestRated = wd.find_element_by_xpath(bestPath)
-        highestRated.click()
-        time.sleep(2)
-    except:
+    time.sleep(4)
+    print("Picking the top rated listing")
+    row_num = 1
+    on_tab = False
+    while not on_tab or row_num > 5:
+        print("Trying listing number " + str(row_num))
         try:
-            button  = wd.find_element_by_xpath("/html/body/div[1]/div/a[2]")
-            button.click()
-            time.sleep
-        except:
-            print("need to wait")
             try:
-                time.sleep(20)
-                highestRated = wd.find_element_by_xpath(bestPath)
-                highestRated.click()
+                wd.click(f"/html/body/div/div[2]/main/div/div[2]/section/article/div/div[{row_num}]/div[2]/header/span/span/a")
+                time.sleep(4)
             except:
-                print("ERROR OUT")
-    ad = False
-    if BeautifulSoup(wd.page_source, 'html.parser').find('title') == "Advertising Page":
-        ad =True
-        print('ad pops up')
-        time.sleep(41)
-    curHTML = wd.page_source
-    curSoup = BeautifulSoup(curHTML, 'html.parser')
-    valid = False
-    header = True
-    data = None
+                try:
+                    print("Trying alternative XPath")
+                    wd.click("/html/body/div/div[2]/main/div/div[2]/section/article/div/div[2]/div[2]/header/span/span/a")
+                    time.sleep
+                except:
+                    print("need to wait")
+            ad = False
+            if BeautifulSoup(wd.driver.page_source, 'html.parser').find('title') == "Advertising Page":
+                ad =True
+                print('AD POPS UP')
+                time.sleep(41)
+            curHTML = wd.driver.page_source
+            curSoup = BeautifulSoup(curHTML, 'html.parser')
+            # valid = False
+            # header = True
+            # data = None
+            # link = curSoup.find('a', href = True)['href']
+            # wd.driver.get(link)
+            if len(curSoup.find_all(string="Transpose")) == 0:
+                print('not on tab yet')
+                raise Exception("Not on tab")
+            print("MADE IT TO THE TAB")
+            on_tab = True
+        except:
+            row_num += 1
+            print("Trying the next best listing")
+            wd.uc_open_with_reconnect(search_url, 3)
+            time.sleep(5)
+    #At this point, we are on the actual tab
+    print("SCRAPE CHORDS")
+    data = chordScraper(wd)
+    if data == None:
+        # If the data is not valid, then we want to go back and try the next best tab, but for now we will just return None
+        # wd.driver.execute_script("window.history.go(-1)")
+        time.sleep(5)
+    return data
    #for listing in curSoup.find_all('div', attrs = {'class': '_2vnXR'}):
-    for listing in curSoup.find_all('div', attrs = {'class': 'pZcWD'}):
-        if header:
-            header = False
-            continue
-        #for form in listing.find_all('div', attrs = {'class':"s2__B _3grw4"}):
-        for form in listing.find_all('div', attrs = {'class':"_3g0_K _1_CWK"}):
-            tabType = form.get_text()
-        if tabType.lower() == "chords":
-            valid = True
-            link = listing.find('a', href = True)['href']
-            wd.get(link)
-            #At this point, we are on the actual tab
-            data = chordScraper(wd)
-            if data == None:
-                wd.execute_script("window.history.go(-1)")
-                time.sleep(5)
-            else:
-                return data
-    if not valid:
-        print("It does not seem that there is a chord tab for the song " + song + " by " + artist + " on UltimateGuitarTab.com")
-        return None
+
+    # for listing in curSoup.find_all('div', attrs = {'class': 'pZcWD'}):
+    #     if header:
+    #         header = False
+    #         continue
+    #     #for form in listing.find_all('div', attrs = {'class':"s2__B _3grw4"}):
+    #     for form in listing.find_all('div', attrs = {'class':"_3g0_K _1_CWK"}):
+    #         tabType = form.get_text()
+    #     if tabType.lower() == "chords":
+    #         valid = True
+    #         link = listing.find('a', href = True)['href']
+    #         wd.driver.get(link)
+    #         #At this point, we are on the actual tab
+    #         print("SCRAPE CHORDS")
+    #         data = chordScraper(wd)
+    #         if data == None:
+    #             wd.driver.execute_script("window.history.go(-1)")
+    #             time.sleep(5)
+    #         else:
+    #             return data
+    # if not valid:
+    #     print("It does not seem that there is a chord tab for the song " + song + " by " + artist + " on UltimateGuitarTab.com")
+    #     return None
     
 #Function to be run when you are on the webpage you want to scrape
 # Will scrape the chord data of the song transposed to the key of C major
 def chordScraper(wd):
-    html = wd.page_source
+    time.sleep(4)
+    html = wd.driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
-    time.sleep(16)
+    # time.sleep(16)
     #Get key data
     key = ""
     capo = 0
-    for headerLine in soup.find_all('div', attrs ={'class':'_2EcLF'}):
-        if headerLine.get_text()[0:5] == "Capo:":
-            capo = int(headerLine.get_text()[6])
-        if headerLine.get_text()[0:4] =="Key:":
-            key = headerLine.get_text()[5:].strip()
+    #for headerLine in soup.find_all('div', attrs ={'class':'_2EcLF'}): 
+    for headerLine in soup.find_all('div', attrs ={'class':'CCUPL'}): 
+        if "Capo:" in headerLine.get_text():
+            try:
+                capo = int(headerLine.get_text().split("Capo:")[1].strip()[0])
+            except:
+                capo = 0
+        if "Key:" in headerLine.get_text():
+            key = headerLine.get_text().split("Key: ")[1].strip().split("Capo")[0]
             break
+        # Old Format
+        # if headerLine.get_text()[0:5] == "Capo:":
+        #     capo = int(headerLine.get_text()[6])
+        # if headerLine.get_text()[0:4] =="Key:":
+        #     key = headerLine.get_text()[5:].strip()
+        #     break
+    print("KEY: " + key)
+    print("CAPO: " + str(capo))
     if key == "":
         #this isn't a valid tab really, we cant standardize it ---> make it go to the next one
         print("NOT A VALID TAB")
@@ -124,7 +179,7 @@ def chordScraper(wd):
     transposeToC(wd, key, capo)
     #Now should be in C major
 
-    body = BeautifulSoup(wd.page_source, 'html.parser').find('pre', attrs ={'class':'_3zygO'})
+    body = BeautifulSoup(wd.driver.page_source, 'html.parser').find('pre', attrs ={'class':'_3zygO'})
 
     #Try to split into different song sections
     secs = ["Intro", "Hook","Verse","Chorus","Pre-Chorus","Post-Chorus", "Bridge", "Interlude","Solo","Outro"]
@@ -247,28 +302,33 @@ def chordScraper(wd):
 #Returns the data on each section of each song in the scrapeSongs.csv file. 
 # Will only get the data of artists in 'inputArtists'
 def scrapeSongChords(inputArtists):
-    option = webdriver.ChromeOptions()
-    option.add_argument('--incognito')
-    wd = webdriver.Chrome('dependencies/chromedriver', options = option)
+    # option = webdriver.ChromeOptions()
+    # option.add_argument('--incognito')
+    # wd = webdriver.Chrome('dependencies/chromedriver', options = option)
     scrapeSongs = pd.DataFrame(pd.read_csv("data/scrapeSongs.csv"))
     done = []
-    for index, row in scrapeSongs.iterrows():
-        if row['Artists'] in inputArtists and (row["Name"], row['Artists']) not in done:
-            try:
-                data = scrapeUltimateGuitar(wd, row["Name"], row['Artists'])
-            except:
-                print("Diverted from site")
-                done.append((row["Name"], row['Artists']))
-                continue
-            if data == None:
-                done.append((row["Name"], row['Artists']))
-                continue
-            else:
-                df = dictToDF(data,row["Name"], row['Artists'])
-                done.append((row["Name"], row['Artists']))
-                cur = row["Name"] + "-" + row['Artists']
-                #Save the file of the song's data
-                df.to_csv("data/songData/{0}.csv".format(cur), encoding='utf-8')
+
+    with SB(uc=True) as sb:
+        for index, row in scrapeSongs.iterrows():
+            print("Currently on song " + row["Name"] + " by " + row['Artists'])
+            if row['Artists'] in inputArtists and (row["Name"], row['Artists']) not in done:
+                try:
+                    data = scrapeUltimateGuitar(sb, row["Name"], row['Artists'])
+                except Exception as e:
+                    print(f"Diverted from site with error: {e}")
+                    done.append((row["Name"], row['Artists']))
+                    continue
+                if data == None:
+                    done.append((row["Name"], row['Artists']))
+                    continue
+                else:
+                    df = dictToDF(data,row["Name"], row['Artists'])
+                    done.append((row["Name"], row['Artists']))
+                    cur = row["Name"] + "-" + row['Artists']
+                    #Save the file of the song's data
+                    print("Saving data for " + row["Name"] + " by " + row['Artists'])
+                    df.to_csv("data/songData/{0}.csv".format(cur), encoding='utf-8')
+            print("Done with " + row["Name"] + " by " + row['Artists'])
     files = [file for file in glob.glob('data/songData/*.csv')]
     try:
         finalFile = pd.concat([pd.read_csv(file) for file in files])
@@ -280,13 +340,18 @@ def scrapeSongChords(inputArtists):
 #Function to transpose the current chord sheet to the Key of C major
 def transposeToC(driver, key, capo):
     majKeys = ['A', "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
-    transposes = driver.find_elements_by_tag_name("button")
-    for t in transposes:
-        if t.text== "−1":
-            transposeDown= t
-        elif t.text == "+1":
-            transposeUp = t
-   
+    #transposes = driver.find_elements_by_tag_name("button")
+    transposes = driver.find_elements(By.TAG_NAME, "button")
+    # print("TRANSPOSES: " + str(transposes))
+    # transposeUp =  driver.find_elements(By.XPATH, '//*[@id="react-aria2127331968-P0-34"]')[0]
+    
+    # transposeDown = driver.find_elements(By.XPATH, '//*[@id="react-aria2127331968-P0-33"]')[0]
+    # for t in transposes:
+    #     if t.text== "−1":
+    #         transposeDown= t
+    #     elif t.text == "+1":
+    #         transposeUp = t
+    print("1")
     #Check for if the key is flat, and then turn it to its corresponding sharp key
     if "b" in key:
         flatKeys = ['A', "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"]
@@ -296,7 +361,7 @@ def transposeToC(driver, key, capo):
             key = newKey + 'm'
         else:
             key = newKey
-            
+    print("2")
     #if key is minor, make it its relative major key by transposing up 3 half steps
     if "m" in key or "M" in key:
         oldKey = key.replace('m', "")
@@ -304,31 +369,38 @@ def transposeToC(driver, key, capo):
         index = (index + 3)%12
         key = majKeys[index]
     #Now the chords should be in a major key
-    
+    print("3")
     #If the major key is C, then quit
     if key == 'C':
         return driver
 
     #Account for the capo if it is present, then transpose to C from the resulting key
     elif capo != 0:
+        print("4")
         index = (majKeys.index(key) - capo)
         if index < 0: 
             key = majKeys[12 + index]
         else:
             key = majKeys[index]
+        print("5")
     if key == 'C':
         return driver
     elif key in ["F#", "G", "G#", 'A', "A#", "B"]:
+        print("6")
         while key != "C":
             index = (majKeys.index(key) + 1)%12
             time.sleep(6)
-            transposeUp.click()
+            print("7")
+            driver.click('//*[@id="react-aria2127331968-P0-34"]')
+            #transposeUp.click()
+            print("8")
             key = majKeys[index]
     elif key in ["C#", "D", "D#", "E", "F"]:
         while key != "C":
             index = (majKeys.index(key) - 1)
             time.sleep(6)
-            transposeDown.click()
+            driver.click('//*[@id="react-aria2127331968-P0-33"]')
+            #transposeDown.click()
             key = majKeys[index]
     time.sleep(5)
     return driver
@@ -405,7 +477,7 @@ def dictToDF(data, song, artist):
 def main():
     #inputArtists is the list of artists who show up in the the Artists column 
     # of 'scrapeSongs.csv' AND we want to actually scrape the songs of
-    inputArtists =["Ed Sheeran"] #all listed artists must be in scrapeSongs.csv
+    inputArtists =["Ed Sheeran", "Foo Fighters"] #all listed artists must be in scrapeSongs.csv
     scrapeSongChords(inputArtists)
 
 if __name__ == "__main__":
