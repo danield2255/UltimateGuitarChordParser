@@ -4,9 +4,19 @@ Selenium/Beautiful Soup web scraper based chord parser of Ultimate-Guitar.com.
 
 Ultimate-Guitar.com(https://www.ultimate-guitar.com/) is a forum based site for posting guitar tabs, and can be considered a great source for learning many songs on guitar or piano. Getting data on the chords which make up a song is often a challenge, but this repository's program serves as a possible solution using ultimate-guitar!
 
+## Background
+
 The program chordParser.py requires a csv file which can be created in chordCreator.py where songs are chosen to be scraped. The user inputs the song names and artists of these songs to this program and a file is created. This file is called upon in the main program and the user specifies which of the artists in the file just created will they want the song data of. 
 
 The program has the requirement that there is a "key" datafield in the tab because it wanted to be able to standardize the key of the song to C major using the tool built into the website. If there is not key data for a tab, it is considered invalid. 
+
+## Setup 
+To install requirements, run the following
+```pip install -r requirements.txt```
+
+You will have a csv file to define what songs to pull data for. You can either manually upload one or you can create one by defining the songs / artists in the helper file by running```python3 songFileCreator.py```. The resulting file will be ```data/scrapeSongs.csv```
+
+Finally to run the actual scraper, once you have the csv file ready to tell it what songs to get data for, just run ```python3 chordParser.py```
 
 The data returned is data on each section of the songs scraped. For all valid songs with valid tabs, the following data is returned:
 
