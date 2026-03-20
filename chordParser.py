@@ -15,21 +15,23 @@ def verify_success(sb):
     sb.assert_element('img[alt="Logo Assembly"]', timeout=4)
     sb.sleep(4)
 
-def scrapeUltimateGuitar(web_driver, song, artist):
+
+def scrape_ultimate_guitar(web_driver, song, artist):
+    """Parent function to scrape the chord progression of a single song from ultimate-guitar.com
+
+    Args:
+        web_driver (selenium.webdriver): The webdriver instance
+        song (str): The name of the song to scrape
+        artist (str): The name of the artist who performed the song
+
+    Returns:
+        dict: A dictionary containing the scraped chord data
     """
-    Parent function to scrape the chord progression of a single song from ultimate-guitar.com
-        Parameters: 
-        - web_driver = webdriver executable file (can use included chromedriver)
-        - song: the name of the song you want to scrape
-        - artist: name of the artist who the song is by
-    """
+    
     search_string = str(song + " " + artist).replace(" ", "+")
     search_url = f"https://www.ultimate-guitar.com/search.php?title={search_string}&type%5B0%5D=300&page=1&order=myweight"
     web_driver.uc_open_with_reconnect(search_url, 3)
     time.sleep(4)
-    
-    #Search for the song name 
-    search_val = str(artist + " " + song)
 
     print("Searching for " + song + " by " + artist)
 
@@ -56,15 +58,15 @@ def scrapeUltimateGuitar(web_driver, song, artist):
                 ad =True
                 print('AD POPS UP')
                 time.sleep(41)
-            curHTML = web_driver.driver.page_source
-            curSoup = BeautifulSoup(curHTML, 'html.parser')
-            if len(curSoup.find_all(string="Transpose")) == 0:
+            cur_html = web_driver.driver.page_source
+            cur_soup = BeautifulSoup(cur_html, 'html.parser')
+            if len(cur_soup.find_all(string="Transpose")) == 0:
                 print('not on tab yet')
                 raise Exception("Not on tab")
             print("MADE IT TO THE TAB")
             #At this point, we are on the actual tab
             print("SCRAPE CHORDS")
-            data = chordScraper(web_driver)
+            data = scrape_chords(web_driver)
             if data != None:
                 on_usable_tab = True
             else:
@@ -77,32 +79,38 @@ def scrapeUltimateGuitar(web_driver, song, artist):
             time.sleep(5)
     return data
     
-#Function to be run when you are on the webpage you want to scrape
-# Will scrape the chord data of the song transposed to the key of C major
-def chordScraper(web_driver):
+
+def scrape_chords(web_driver):
+    """Runs when you are on the webpage you want to scrape. Scrapes the chord data of the song transposed to the key of C major
+
+    Args:
+        web_driver (selenium.webdriver): The webdriver instance
+
+    Returns:
+        dict: A dictionary containing the scraped chord data
+    """
     time.sleep(4)
     html = web_driver.driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
-    # time.sleep(16)
-    #Get key data
+
+    #Get key and capo data
     key = ""
     capo = 0
-    #for headerLine in soup.find_all('div', attrs ={'class':'_2EcLF'}): 
-    for headerLine in soup.find_all('div', attrs ={'class':'CCUPL'}): 
-        print(headerLine.get_text())
-        if "Capo:" in headerLine.get_text():
+    for header_line in soup.find_all('div', attrs ={'class':'CCUPL'}): 
+        print(header_line.get_text())
+        if "Capo:" in header_line.get_text():
             try:
-                capo = int(headerLine.get_text().split("Capo:")[1].strip()[0])
+                capo = int(header_line.get_text().split("Capo:")[1].strip()[0])
             except:
                 capo = 0
-        if "Key:" in headerLine.get_text():
-            key = headerLine.get_text().split("Key: ")[1].strip().split("Capo")[0]
+        if "Key:" in header_line.get_text():
+            key = header_line.get_text().split("Key: ")[1].strip().split("Capo")[0]
             break
         # Old Format
-        # if headerLine.get_text()[0:5] == "Capo:":
-        #     capo = int(headerLine.get_text()[6])
-        # if headerLine.get_text()[0:4] =="Key:":
-        #     key = headerLine.get_text()[5:].strip()
+        # if header_line.get_text()[0:5] == "Capo:":
+        #     capo = int(header_line.get_text()[6])
+        # if header_line.get_text()[0:4] =="Key:":
+        #     key = header_line.get_text()[5:].strip()
         #     break
     print("KEY: " + key)
     print("CAPO: " + str(capo))
@@ -112,7 +120,7 @@ def chordScraper(web_driver):
         return None
     
     #standardize the key to C major
-    transposeToC(web_driver, key, capo)
+    transpose_to_C(web_driver, key, capo)
     #Now should be in C major
 
     body = BeautifulSoup(web_driver.driver.page_source, 'html.parser').find('pre', attrs ={'class':'_3zygO'})
@@ -125,51 +133,51 @@ def chordScraper(web_driver):
 
     #Data will be held in a dictionary with the key being the section, and the value being a list of the progression,
     #   the end (this one will be None if the end is the same as the whole thing), number of chords in the section, 
-    #   number of nondiatonic chords and number of extended chords 
+    #   number of non_diatonic chords and number of extended chords 
     data = {} 
-    secDataNext=False
-    secLabel = ""
+    sec_data_next=False
+    sec_label = ""
     #Try to define sections
     for sec in sections:
         #have to take digits away from string to make it see verse 1 and verse 2 as equal for example
-        secMod = ''.join([i for i in sec if not i.isdigit()])
-        if secMod.strip() in secs:
+        sec_mod = ''.join([i for i in sec if not i.isdigit()])
+        if sec_mod.strip() in secs:
             #detect if we are actually just finding the label
-            secLabel = secMod
-            if secLabel not in data.keys():
-                data[secLabel] = []
-                secDataNext = True
+            sec_label = sec_mod
+            if sec_label not in data.keys():
+                data[sec_label] = []
+                sec_data_next = True
         else:
-            miniSoup = BeautifulSoup(sec, 'html.parser')
-            secChords= []
-            if len(miniSoup.find_all('span', attrs ={'class':'_3bHP1 _3ffP6'})) == 0:
+            mini_soup = BeautifulSoup(sec, 'html.parser')
+            sec_chords= []
+            if len(mini_soup.find_all('span', attrs ={'class':'_3bHP1 _3ffP6'})) == 0:
                 #This means we are looking at a section of the tab that is not a section label, and does not have any chords
                 print('there is nothing useful in this section')
                 continue
-            for item in miniSoup.find_all('span', attrs ={'class':'_3bHP1 _3ffP6'}):
+            for item in mini_soup.find_all('span', attrs ={'class':'_3bHP1 _3ffP6'}):
                 chord = item.get_text()
             
                 try:
-                    secChords.append(chord.strip())
+                    sec_chords.append(chord.strip())
                 except:
                     pass
 
             progression = []
             chords = []
-            for c in range(len(secChords)):
-                progression.append(secChords[c])
-                if c == len(secChords)-1 and chords == []:
-                    chords = secChords
+            for c in range(len(sec_chords)):
+                progression.append(sec_chords[c])
+                if c == len(sec_chords)-1 and chords == []:
+                    chords = sec_chords
                 #check if this is the point of circular nature in the chord progression
                 elif len(progression) > 1 and progression[-1] == progression[0]:
                     progLen = len(progression) -1 
                     qualify = True
                     for i in range(progLen):
-                        if len(secChords)-1 < progLen + i: 
+                        if len(sec_chords)-1 < progLen + i: 
                             #Then this is the progression
-                            chords = secChords
+                            chords = sec_chords
                         #check to see if this pattern repeats itself
-                        elif secChords[i] != secChords[progLen + i]:
+                        elif sec_chords[i] != sec_chords[progLen + i]:
                             qualify= False
                             break
                     if qualify:
@@ -182,71 +190,73 @@ def chordScraper(web_driver):
             #See if the end of the progression is different at all
             end = []
             i = len(chords) -1
-            if secChords[-1] == chords[i]:
-                if i == len(chords) -1 and i != 0 and secChords[-2] != chords[i-1]: 
-                    end = [secChords[-2] , secChords[-1]]
+            if sec_chords[-1] == chords[i]:
+                if i == len(chords) -1 and i != 0 and sec_chords[-2] != chords[i-1]: 
+                    end = [sec_chords[-2] , sec_chords[-1]]
                     counter1 = len(chords) - 3
                     counter2 = -3
-                    while secChords[counter2] !=chords[counter1] and counter1 > 0:
-                        end = [secChords[counter2]]+ end
+                    while sec_chords[counter2] !=chords[counter1] and counter1 > 0:
+                        end = [sec_chords[counter2]]+ end
                         counter1 -= 1
                         counter2 -= 1
             else:
-                end = [secChords[-1]]
+                end = [sec_chords[-1]]
                 counter1 = len(chords) - 2
                 counter2 = -1
-                while secChords[counter2] != chords[counter1] and counter1 > 0:
-                    end = [secChords[counter2]] + end
+                while sec_chords[counter2] != chords[counter1] and counter1 > 0:
+                    end = [sec_chords[counter2]] + end
                     counter1 -= 1
                     counter2 -= 1
             
             #count extended chords, do not consider the 5 extension, as it is just a part of regular major/minor chord 
-            extendedChords = 0
+            extended_chords = 0
             if end != []:
                 for val in end:
                     if not "5" in val and (''.join([i for i in val if i.isdigit()]) != "" or 'sus' in val or 'add' in val):
-                        extendedChords += 1
+                        extended_chords += 1
                         val.replace("sus", "")
                     elif '/' in val:
-                        extendedChords += 1
+                        extended_chords += 1
 
             for val in chords:
                 if not "5" in val and (''.join([i for i in val if i.isdigit()]) != "" or 'sus' in val or 'add' in val):
-                    extendedChords += 1
+                    extended_chords += 1
                     val.replace("sus", "")
                 elif '/' in val:
-                    extendedChords += 1
+                    extended_chords += 1
             
             #Get number of non-diatonic chords and get the chord pattern in notation
-            chords, outKey1 = diatonicPattern(chords)
+            chords, out_key_1 = diatonic_pattern(chords)
             
             #do the same for the end pattern
-            end, outKey2 = diatonicPattern(end)
-            nonDiatonicChords = outKey1 + outKey2
+            end, out_key_2 = diatonic_pattern(end)
+            nondiatonic_chords = out_key_1 + out_key_2
             
             if end == "":
                 end = None
-            if secDataNext:
-                data[secLabel]= [chords, end, len(set(secChords)), nonDiatonicChords, extendedChords]
-                secDataNext = False
-            if secLabel in list(data.keys()) and data[secLabel] == []:
+            if sec_data_next:
+                data[sec_label]= [chords, end, len(set(sec_chords)), nondiatonic_chords, extended_chords]
+                sec_data_next = False
+            if sec_label in list(data.keys()) and data[sec_label] == []:
                 print("EMPTY SECTION")
-                del data[secLabel]
+                del data[sec_label]
     return data
 
+def scrape_song_chords(input_artists):
+    """Will only get the data on each section of each song in the scrape_songs.csv file. 
 
-#Returns the data on each section of each song in the scrapeSongs.csv file. 
-# Will only get the data of artists in 'inputArtists'
-def scrapeSongChords(inputArtists):
-    scrapeSongs = pd.DataFrame(pd.read_csv("data/scrapeSongs.csv"))
+    Args:
+        input_artists (list): A list of artist names to scrape chords for
+    """
+    scrape_songs = pd.DataFrame(pd.read_csv("data/scrape_songs.csv"))
     done = []
 
     with SB(uc=True) as sb:
-        for index, row in scrapeSongs.iterrows():
+        for index, row in scrape_songs.iterrows():
             print("Currently on song " + row["Name"] + " by " + row['Artists'])
-            if row['Artists'] in inputArtists and (row["Name"], row['Artists']) not in done:
+            if row['Artists'] in input_artists and (row["Name"], row['Artists']) not in done:
                 try:
-                    data = scrapeUltimateGuitar(sb, row["Name"], row['Artists'])
+                    data = scrape_ultimate_guitar(sb, row["Name"], row['Artists'])
                 except Exception as e:
                     print(f"Diverted from site with error: {e}")
                     done.append((row["Name"], row['Artists']))
@@ -255,7 +265,7 @@ def scrapeSongChords(inputArtists):
                     done.append((row["Name"], row['Artists']))
                     continue
                 else:
-                    df = dictToDF(data,row["Name"], row['Artists'])
+                    df = dict_to_df(data,row["Name"], row['Artists'])
                     done.append((row["Name"], row['Artists']))
                     cur = row["Name"] + "-" + row['Artists']
                     #Save the file of the song's data
@@ -264,16 +274,25 @@ def scrapeSongChords(inputArtists):
             print("Done with " + row["Name"] + " by " + row['Artists'])
     files = [file for file in glob.glob('data/songData/*.csv')]
     try:
-        finalFile = pd.concat([pd.read_csv(file) for file in files])
-        finalFile.to_csv('data/songSections.csv')
+        final_file = pd.concat([pd.read_csv(file) for file in files])
+        final_file.to_csv('data/songSections.csv')
     except:
         print("No valid tabs were found and there were no songs already saved, try searching for different songs!")
 
 
-#Function to transpose the current chord sheet to the Key of C major
-def transposeToC(web_driver, key, capo):
-    majKeys = ['A', "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
-    print(type(web_driver))
+
+def transpose_to_C(web_driver, key, capo):
+    """Transpose the current chord sheet to the Key of C major
+
+    Args:
+        web_driver (seleniumbase.webdriver): Webdriver that is currently on the page of the tab you want to transpose
+        key (str): The key that the tab originally is in.
+        capo (int): The fret number of the capo, if there is one. If there is no capo, should be 0.
+
+    Returns:
+        web_driver (seleniumbase.webdriver): The updated webdriver after transposing the chords
+    """
+    maj_keys = ['A', "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
     time.sleep(5)
     print("ABOUT TO CLICK DISMISS")
     print(web_driver.find_elements(By.CSS_SELECTOR, '.GZm7j.KKBhY._8WVi7._6yJZx.wQpuI._4XUk_'))
@@ -286,24 +305,24 @@ def transposeToC(web_driver, key, capo):
     print("CLICKED DISMISS")
     time.sleep(2)
     transposes = web_driver.find_elements(By.CSS_SELECTOR, '.GZm7j.KKBhY._8WVi7._6yJZx.wQpuI._4XUk_')
-    transposeUp = transposes[3]
-    transposeDown = transposes[2]
+    transpose_up = transposes[3]
+    transpose_down = transposes[2]
     
     #Check for if the key is flat, and then turn it to its corresponding sharp key
     if "b" in key:
-        flatKeys = ['A', "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"]
-        index = flatKeys.index(key[:2])
-        newKey = majKeys[index]
+        flat_keys = ['A', "Bb", "B", "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab"]
+        index = flat_keys.index(key[:2])
+        new_key = maj_keys[index]
         if "m" in key or "M" in key:
-            key = newKey + 'm'
+            key = new_key + 'm'
         else:
-            key = newKey
+            key = new_key
     #if key is minor, make it its relative major key by transposing up 3 half steps
     if "m" in key or "M" in key:
-        oldKey = key.replace('m', "")
-        index = majKeys.index(oldKey)
+        old_key = key.replace('m', "")
+        index = maj_keys.index(old_key)
         index = (index + 3)%12
-        key = majKeys[index]
+        key = maj_keys[index]
     #Now the chords should be in a major key
     #If the major key is C, then quit
     if key == 'C':
@@ -312,38 +331,45 @@ def transposeToC(web_driver, key, capo):
     #Account for the capo if it is present, then transpose to C from the resulting key
     elif capo != 0:
         print("4")
-        index = (majKeys.index(key) - capo)
+        index = (maj_keys.index(key) - capo)
         if index < 0: 
-            key = majKeys[12 + index]
+            key = maj_keys[12 + index]
         else:
-            key = majKeys[index]
+            key = maj_keys[index]
         print("5")
     if key == 'C':
         return web_driver
     elif key in ["F#", "G", "G#", 'A', "A#", "B"]:
         while key != "C":
-            index = (majKeys.index(key) + 1)%12
+            index = (maj_keys.index(key) + 1)%12
             time.sleep(6)
-            web_driver.driver.execute_script("arguments[0].click();", transposeUp)
+            web_driver.driver.execute_script("arguments[0].click();", transpose_up)
             print("SUCCESSFUL TRANSPOSE UP!")
-            key = majKeys[index]
+            key = maj_keys[index]
     elif key in ["C#", "D", "D#", "E", "F"]:
         while key != "C":
-            index = (majKeys.index(key) - 1)
+            index = (maj_keys.index(key) - 1)
             time.sleep(6)
-            web_driver.driver.execute_script("arguments[0].click();", transposeDown)
+            web_driver.driver.execute_script("arguments[0].click();", transpose_down)
             print("SUCCESSFUL TRANSPOSE DOWN!")
-            key = majKeys[index]
+            key = maj_keys[index]
     time.sleep(5)
     return web_driver
         
     
-#Lists out the detected chord progression of the section 
-def diatonicPattern(chords):
-    cMaj = ["C", "Dm", "Em", "F", "G", "Am", "Bdim"]
+def diatonic_pattern(chords):
+    """Lists out the detected chord progression of the section in Roman numerals
+
+    Args:
+        chords (list): A list of chord strings
+
+    Returns:
+        tuple: A tuple containing the Roman numeral progression and the number of non-diatonic chords
+    """
+    c_major = ["C", "Dm", "Em", "F", "G", "Am", "Bdim"]
     numerals = ["I", "ii", "iii", "IV", "V", "vi", "VII"]
-    noExtend=[]
-    nonDiatonic = 0
+    no_extend=[]
+    non_diatonic = 0
     
     for val in chords:
         if '/' in val:
@@ -351,23 +377,23 @@ def diatonicPattern(chords):
                 val = val[0:2]
             else:
                 val = val[0]
-        noExtend.append(''.join([i for i in val if not i.isdigit()]).replace("maj", "").replace("sus", "").replace('dim', "").replace('aug', "").replace('(', "").replace(')', "").replace('add',""))
+        no_extend.append(''.join([i for i in val if not i.isdigit()]).replace("maj", "").replace("sus", "").replace('dim', "").replace('aug', "").replace('(', "").replace(')', "").replace('add',""))
 
     numbers = ""
     last = ""
     prog = []
-    for number in noExtend:
+    for number in no_extend:
         if number != last:
             prog.append(number)
         last = number
     for c in prog:
         #Attempts to just get the numeral associated with a chord in the key of C major
-        # If the current chord is not in cMaj, add the correct suffix
+        # If the current chord is not in c_major, add the correct suffix
         try:
-            numbers = numbers + "-" + numerals[cMaj.index(c)]
+            numbers = numbers + "-" + numerals[c_major.index(c)]
         except:
-            cMajStripped = ["C", "D", "E", "F", "G", "A", "B"]
-            nonDiatonic += 1
+            c_major_stripped = ["C", "D", "E", "F", "G", "A", "B"]
+            non_diatonic += 1
             suffix = ""
             if "#" in c:
                 c = c.replace("#", "")
@@ -391,26 +417,36 @@ def diatonicPattern(chords):
                 minor = False
             #need to handle a major where there should not be one or minor where there should not be one
             if minor: 
-                numbers = numbers + "-"+ numerals[cMajStripped.index(c)].lower()+suffix
+                numbers = numbers + "-"+ numerals[c_major_stripped.index(c)].lower()+suffix
             else:
-                numbers = numbers + "-"+ numerals[cMajStripped.index(c)].upper()+suffix
-    return numbers[1:], nonDiatonic
+                numbers = numbers + "-"+ numerals[c_major_stripped.index(c)].upper()+suffix
+    return numbers[1:], non_diatonic
 
-#Function to turn dictionary key value pairs into dataframe rows
-def dictToDF(data, song, artist):
-    df = pd.DataFrame(columns = ['Name', "Artist", "Section", "Progression", "EndDifferent", "NumSectionChords", "nonDiatonicChords", "extendedChords"])
+
+def dict_to_df(data, song, artist):
+    """Turns dictionary key value pairs into dataframe rows
+
+    Args:
+        data (dict): A dictionary containing the scraped chord data
+        song (str): The name of the song that the data is from
+        artist (str): The name of the artist that the data is from
+
+    Returns:
+        pandas.DataFrame: A DataFrame containing the scraped chord data in each section of the song
+    """
+    df = pd.DataFrame(columns = ['Name', "Artist", "Section", "Progression", "EndDifferent", "NumSectionChords", "nondiatonic_chords", "extended_chords"])
     for key, value in data.items():
         if value == []:
             continue
-        df = df.append({'Name':song, "Artist":artist, "Section":key, "Progression":value[0], "EndDifferent":value[1], "NumSectionChords":value[2], "nonDiatonicChords":value[3], "extendedChords":value[4]}, ignore_index = True)
+        df = df.append({'Name':song, "Artist":artist, "Section":key, "Progression":value[0], "EndDifferent":value[1], "NumSectionChords":value[2], "nondiatonic_chords":value[3], "extended_chords":value[4]}, ignore_index = True)
     return df
 
 
 def main():
-    #inputArtists is the list of artists who show up in the the Artists column 
-    # of 'scrapeSongs.csv' AND we want to actually scrape the songs of
-    inputArtists =["Ed Sheeran", "Foo Fighters"] #all listed artists must be in scrapeSongs.csv
-    scrapeSongChords(inputArtists)
+    #input_artists is the list of artists who show up in the the Artists column 
+    # of 'scrape_songs.csv' AND we want to actually scrape the songs of
+    input_artists =["Ed Sheeran", "Foo Fighters"] #all listed artists must be in scrape_songs.csv
+    scrape_song_chords(input_artists)
 
 if __name__ == "__main__":
     main()
