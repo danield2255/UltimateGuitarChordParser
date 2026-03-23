@@ -11,7 +11,7 @@ import glob
 import time
 from seleniumbase import SB
 from utils.helper_funcs import dict_to_df
-from utils.music_logic_funcs import transpose_to_C, diatonic_pattern, derive_key, derive_capo, collect_chords_from_section
+from utils.music_logic_funcs import transpose_to_C, derive_key, derive_capo, collect_chords_from_section
 
 
 def select_compatible_tab(web_driver, song, artist):
@@ -25,7 +25,6 @@ def select_compatible_tab(web_driver, song, artist):
     Returns:
         dict: A dictionary containing the scraped chord data
     """
-    
     search_string = str(song + " " + artist).replace(" ", "+")
     search_url = f"https://www.ultimate-guitar.com/search.php?title={search_string}&type%5B0%5D=300&page=1&order=myweight"
     web_driver.uc_open_with_reconnect(search_url, 3)
@@ -63,6 +62,7 @@ def select_compatible_tab(web_driver, song, artist):
             print("MADE IT TO THE TAB")
             data = scrape_chords_from_tab(web_driver)
             if data != None:
+                print("Data collected successfully")
                 on_usable_tab = True
             else:
                 raise Exception("Not a usable tab")
@@ -71,7 +71,7 @@ def select_compatible_tab(web_driver, song, artist):
             row_num += 1
             print("Trying the next best listing")
             web_driver.uc_open_with_reconnect(search_url, 3)
-            time.sleep(5)
+            time.sleep(4)
     return data
     
 
@@ -84,7 +84,7 @@ def scrape_chords_from_tab(web_driver):
     Returns:
         dict: A dictionary containing the scraped chord data
     """
-    time.sleep(4)
+    time.sleep(3)
     html = web_driver.driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
 
@@ -100,11 +100,17 @@ def scrape_chords_from_tab(web_driver):
         return None
     
     #standardize the key to C major
-    transpose_to_C(web_driver, key, capo)
+    web_driver = transpose_to_C(web_driver, key, capo)
 
-    body = BeautifulSoup(web_driver.driver.page_source, 'html.parser').find('pre', attrs ={'class':'_3zygO'})
+    # NOTE: NEXT LINE UNCOMMEND 
+    body = BeautifulSoup(web_driver.driver.page_source, 'lxml').find('pre', attrs ={'class': 'k_vI3 KLhHx fGc1h'})
+    # body = BeautifulSoup(web_driver.get_page_source(), 'html.parser').find('pre', attrs ={'class': '_3zygO'})
     regex = "\[(.*?)\]"
-    sections = re.split(regex,str(body))
+    print("BODY OF THE TAB")
+    print(body)
+    print("-------------------")
+    sections = re.split(regex, str(body))
+    print("SECTIONS: " + str(sections))
 
     # Data will be held in a dictionary with the key being the section, and the value being a list of the progression,
     # the end (this one will be None if the end is the same as the whole thing), number of chords in the section, 
@@ -113,6 +119,9 @@ def scrape_chords_from_tab(web_driver):
     sec_data_next=False
     sec_label = ""
     for sec in sections:
+        print("-------------------")
+        print("CURRENT SECTION: " + sec)
+        print("-------------------")
         data, sec_data_next, sec_label = collect_chords_from_section(sec, data, sec_data_next, sec_label)
     return data
 
@@ -126,7 +135,7 @@ def collect_song_data(input_artists):
     done = []
 
     with SB(uc=True) as sb:
-        for index, row in scrape_songs.iterrows():
+        for _, row in scrape_songs.iterrows():
             print("Currently on song " + row["Name"] + " by " + row['Artists'])
             if row['Artists'] in input_artists and (row["Name"], row['Artists']) not in done:
                 try:
@@ -136,6 +145,7 @@ def collect_song_data(input_artists):
                     done.append((row["Name"], row['Artists']))
                     continue
                 if data == None:
+                    print("Data was None")
                     done.append((row["Name"], row['Artists']))
                     continue
                 else:
@@ -144,6 +154,7 @@ def collect_song_data(input_artists):
                     cur = row["Name"] + "-" + row['Artists']
                     #Save the file of the song's data
                     print("Saving data for " + row["Name"] + " by " + row['Artists'])
+                    print(df)
                     df.to_csv("data/songData/{0}.csv".format(cur), encoding='utf-8')
             print("Done with " + row["Name"] + " by " + row['Artists'])
     files = [file for file in glob.glob('data/songData/*.csv')]
@@ -158,7 +169,7 @@ def collect_song_data(input_artists):
 def main():
     # Input_artists is the list of artists who show up in the the Artists column 
     # of 'scrape_songs.csv' AND we want to actually scrape the songs of
-    input_artists =["Ed Sheeran", "Foo Fighters"] #all listed artists must be in scrape_songs.csv
+    input_artists =["Coldplay", "Ed Sheeran", "Foo Fighters"] #all listed artists must be in scrape_songs.csv
     collect_song_data(input_artists)
 
 if __name__ == "__main__":
