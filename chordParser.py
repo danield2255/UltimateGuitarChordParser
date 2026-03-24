@@ -1,8 +1,5 @@
 import pandas as pd
-import numpy as np
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -28,12 +25,11 @@ def select_compatible_tab(web_driver, song, artist):
     search_string = str(song + " " + artist).replace(" ", "+")
     search_url = f"https://www.ultimate-guitar.com/search.php?title={search_string}&type%5B0%5D=300&page=1&order=myweight"
     web_driver.uc_open_with_reconnect(search_url, 3)
-    time.sleep(4)
+    time.sleep(3)
 
     print("Searching for " + song + " by " + artist)
 
     #Pick the top rated listing
-    time.sleep(4)
     print("Picking the top rated listing")
     row_num = 1
     on_usable_tab = False
@@ -42,7 +38,7 @@ def select_compatible_tab(web_driver, song, artist):
         try:
             try:
                 web_driver.click(f"/html/body/div/div[2]/main/div/div[2]/section/article/div/div[{row_num}]/div[2]/header/span/span/a")
-                time.sleep(4)
+                time.sleep(3)
             except:
                 try:
                     print("Trying alternative XPath")
@@ -71,7 +67,7 @@ def select_compatible_tab(web_driver, song, artist):
             row_num += 1
             print("Trying the next best listing")
             web_driver.uc_open_with_reconnect(search_url, 3)
-            time.sleep(4)
+            time.sleep(3)
     return data
     
 
@@ -102,16 +98,11 @@ def scrape_chords_from_tab(web_driver):
     #standardize the key to C major
     web_driver = transpose_to_C(web_driver, key, capo)
 
-    # NOTE: NEXT LINE UNCOMMEND 
-    body = BeautifulSoup(web_driver.driver.page_source, 'lxml').find('pre', attrs ={'class': 'k_vI3 KLhHx fGc1h'})
-    # body = BeautifulSoup(web_driver.get_page_source(), 'html.parser').find('pre', attrs ={'class': '_3zygO'})
-    regex = "\[(.*?)\]"
-    print("BODY OF THE TAB")
-    print(body)
-    print("-------------------")
-    sections = re.split(regex, str(body))
-    print("SECTIONS: " + str(sections))
+    body = BeautifulSoup(web_driver.driver.page_source, 'lxml').find("code", attrs ={'class':'QsmqP'})
 
+    regex = "\[(.*?)\]"
+
+    sections = re.split(regex, str(body))
     # Data will be held in a dictionary with the key being the section, and the value being a list of the progression,
     # the end (this one will be None if the end is the same as the whole thing), number of chords in the section, 
     # number of non_diatonic chords and number of extended chords 
@@ -119,9 +110,6 @@ def scrape_chords_from_tab(web_driver):
     sec_data_next=False
     sec_label = ""
     for sec in sections:
-        print("-------------------")
-        print("CURRENT SECTION: " + sec)
-        print("-------------------")
         data, sec_data_next, sec_label = collect_chords_from_section(sec, data, sec_data_next, sec_label)
     return data
 
@@ -153,8 +141,6 @@ def collect_song_data(input_artists):
                     done.append((row["Name"], row['Artists']))
                     cur = row["Name"] + "-" + row['Artists']
                     #Save the file of the song's data
-                    print("Saving data for " + row["Name"] + " by " + row['Artists'])
-                    print(df)
                     df.to_csv("data/songData/{0}.csv".format(cur), encoding='utf-8')
             print("Done with " + row["Name"] + " by " + row['Artists'])
     files = [file for file in glob.glob('data/songData/*.csv')]
@@ -169,7 +155,7 @@ def collect_song_data(input_artists):
 def main():
     # Input_artists is the list of artists who show up in the the Artists column 
     # of 'scrape_songs.csv' AND we want to actually scrape the songs of
-    input_artists =["Coldplay", "Ed Sheeran", "Foo Fighters"] #all listed artists must be in scrape_songs.csv
+    input_artists =["Coldplay", "Taylor Swift", "Beatles"] #all listed artists must be in scrape_songs.csv
     collect_song_data(input_artists)
 
 if __name__ == "__main__":

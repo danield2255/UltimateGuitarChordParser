@@ -4,6 +4,8 @@ Selenium/Beautiful Soup web scraper based chord parser of Ultimate-Guitar.com.
 
 Ultimate-Guitar.com(https://www.ultimate-guitar.com/) is a forum based site for posting guitar tabs, and can be considered a great source for learning many songs on guitar or piano. Getting data on the chords which make up a song is often a challenge, but this repository's program serves as a possible solution using ultimate-guitar!
 
+This could be used to study the chordal complexity or repetition of the different sections of a song. 
+
 ## Background
 
 The program chordParser.py requires a csv file which can be created in chordCreator.py where songs are chosen to be scraped. The user inputs the song names and artists of these songs to this program and a file is created. This file is called upon in the main program and the user specifies which of the artists in the file just created will they want the song data of. 
@@ -14,9 +16,16 @@ The program has the requirement that there is a "key" datafield in the tab becau
 To install requirements, run the following
 ```pip install -r requirements.txt```
 
-You will have a csv file to define what songs to pull data for. You can either manually upload one or you can create one by defining the songs / artists in the helper file by running```python3 songFileCreator.py```. The resulting file will be ```data/scrapeSongs.csv```
+You will have a csv file to define what songs to pull data for. You can either manually upload one or you can create one by defining the songs / artists in the helper file by running
+```python
+python3 songFileCreator.py
+```
+ The resulting file will be ```data/scrapeSongs.csv```
 
-Finally to run the actual scraper, once you have the csv file ready to tell it what songs to get data for, just run ```python3 chordParser.py```
+Finally to run the actual scraper, once you have the csv file ready to tell it what songs to get data for, just run 
+```python
+python3 chordParser.py
+```
 
 The data returned is data on each section of the songs scraped. For all valid songs with valid tabs, the following data is returned:
 
@@ -29,5 +38,10 @@ The data returned is data on each section of the songs scraped. For all valid so
 - nonDiatonicChords: Total number of non-diatonic chords in the section
 - extendedChords: Total number of extended chords in the section
 
-Disclaimer: There are so many ways in which people express data in the tabs, that some songs have complications getting parsed when they should be able to. Also the program only looks for the site's key data, so many songs will be unparsable because this tag is not present. ** However: Searching for more modern songs with guitar or piano instrumentation will likely increase the chance of a successful parse of the data. ** 
+Lastly, if you end up changing the songs you want to scrape, you will need to make the change in ```scrapeSongs.csv``` and also add whatever artist names to collect data on in the main function of ```chordParser.py```.
+
+***Disclaimer:*** There are so many ways in which people express data in the tabs, that some songs have complications getting parsed when they should be able to. Also the program only looks for the site's key data, so many songs will be unparsable because this tag is not present.
+**However: Searching for more modern songs with guitar or piano instrumentation will likely increase the chance of a successful parse of the data.** 
 Finally, one issue experienced with this is that the site seems to have changed its previously set html tags which the program depends on staying consistent. If they continue to do this, this will require program maintenance. 
+
+Currently, there are conservative waiting times using ```time.sleep(<sleep value>)``` so if you hope for the scraper to run faster, you can decrease those times, but this risks crashes. 
