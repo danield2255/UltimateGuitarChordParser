@@ -1,0 +1,12 @@
+,Unnamed: 0,Name,Artist,Section,Progression,EndDifferent,NumSectionChords,nondiatonic_chords,extended_chords
+0,0, Yellow,Coldplay,Intro,I-V-IV-I,,3,0,0
+1,1, Yellow,Coldplay,Verse ,I-V-IV,V,3,0,0
+0,0,Karma,Taylor Swift,Intro,I-VIIb-v-IV,,4,2,2
+1,1,Karma,Taylor Swift,Verse ,I-VIIb-ii,,3,1,1
+2,2,Karma,Taylor Swift,Pre-Chorus,I-VIIb-ii,,3,1,1
+3,3,Karma,Taylor Swift,Chorus,I-VIIb-IV-I,IV-I-VIIb,3,2,0
+0,0,Twist and Shout,Beatles,Intro,I-IV-V,,3,0,0
+1,1,Twist and Shout,Beatles,Verse ,I-IV-V,V,4,0,1
+0,0,Let It Be,Beatles,Intro,V-II-iii-I-V-II-I-V,,4,2,0
+1,1,Let It Be,Beatles,Verse,V-II-iii-I-V-II-I-V,,4,2,0
+2,2,Let It Be,Beatles,Chorus,iii-II-I-V-II-I-V,,4,2,0
